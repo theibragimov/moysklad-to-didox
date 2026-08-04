@@ -849,10 +849,12 @@
       row.getCell(COL.BA).value = item.price;
       row.getCell(COL.AB).value = customerInn;
       row.getCell(COL.N).value = SELLER_INN;
-      row.getCell(COL.BD).value = (Number(item.qty) || 0) * (Number(item.price) || 0);
+      const supplyValue = (Number(item.qty) || 0) * (Number(item.price) || 0);
+      const vatAmount = Math.round(supplyValue * 0.12 * 100) / 100;
+      row.getCell(COL.BD).value = supplyValue;
       row.getCell(COL.BE).value = '12';
-      row.getCell(COL.BF).value = '0,12';
-      row.getCell(COL.BG).value = 1.12;
+      row.getCell(COL.BF).value = vatAmount;
+      row.getCell(COL.BG).value = Math.round((supplyValue + vatAmount) * 100) / 100;
       row.getCell(COL.BM).value = 3;
 
       if(!item.found){
