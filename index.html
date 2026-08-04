@@ -849,7 +849,7 @@
       row.getCell(COL.BA).value = item.price;
       row.getCell(COL.AB).value = customerInn;
       row.getCell(COL.N).value = SELLER_INN;
-      row.getCell(COL.BD).value = 1;
+      row.getCell(COL.BD).value = (Number(item.qty) || 0) * (Number(item.price) || 0);
       row.getCell(COL.BE).value = '12';
       row.getCell(COL.BF).value = '0,12';
       row.getCell(COL.BG).value = 1.12;
