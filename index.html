@@ -150,6 +150,38 @@
     word-break:break-all;
     padding:0 8px;
   }
+  .date-fields{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:28px;
+  }
+  .date-field{
+    flex:1;
+    min-width:180px;
+  }
+  .date-field label{
+    display:block;
+    font-size:13px;
+    font-weight:700;
+    color:var(--text);
+    margin-bottom:6px;
+  }
+  .date-field input[type=date]{
+    width:100%;
+    padding:12px 14px;
+    border:2px solid var(--border);
+    border-radius:14px;
+    font-size:15px;
+    font-family:inherit;
+    color:var(--text);
+    background:#fff;
+    transition:border-color .2s ease;
+  }
+  .date-field input[type=date]:focus{
+    outline:none;
+    border-color:var(--primary);
+  }
   .actions{
     display:flex;
     justify-content:center;
@@ -331,6 +363,17 @@
       <div class="hint">MoySkladdan eksport qilingan buyurtmani shu yerga tashlang (.xls yoki .xlsx)</div>
       <div class="filename" id="filename-order"></div>
       <input type="file" id="input-order" accept=".xlsx,.xls,.csv">
+    </div>
+
+    <div class="date-fields">
+      <div class="date-field">
+        <label for="input-invoice-date">Hisob-fakturа sanasini kiriting</label>
+        <input type="date" id="input-invoice-date">
+      </div>
+      <div class="date-field">
+        <label for="input-contract-date">Shartnoma sanasini kiriting</label>
+        <input type="date" id="input-contract-date">
+      </div>
     </div>
 
     <div class="actions">
@@ -555,8 +598,19 @@
 
   function updateConvertButton(){
     const btn = document.getElementById('convertBtn');
-    btn.disabled = !(yoriqnomaItems && moySkladData);
+    const invoiceDate = document.getElementById('input-invoice-date').value;
+    const contractDate = document.getElementById('input-contract-date').value;
+    btn.disabled = !(yoriqnomaItems && moySkladData && invoiceDate && contractDate);
   }
+
+  // "YYYY-MM-DD" (native <input type=date> value) -> "DD.MM.YYYY" (template format)
+  function formatDateInput(value){
+    const [y, m, d] = value.split('-');
+    return d + '.' + m + '.' + y;
+  }
+
+  document.getElementById('input-invoice-date').addEventListener('change', updateConvertButton);
+  document.getElementById('input-contract-date').addEventListener('change', updateConvertButton);
 
   function wireOrderZone(){
     const zone = document.getElementById('zone-order');
@@ -813,7 +867,7 @@
     return yyyy + '-' + mm + '-' + dd;
   }
 
-  async function buildOutputWorkbook(results, customerInn){
+  async function buildOutputWorkbook(results, customerInn, invoiceDate, contractDate){
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(base64ToArrayBuffer(TEMPLATE_B64));
     const ws = wb.getWorksheet(1);
@@ -839,9 +893,9 @@
       row.getCell(COL.B).value = '0';
       row.getCell(COL.C).value = 1;
       row.getCell(COL.D).value = 'Test';
-      row.getCell(COL.E).value = '01.12.2026';
+      row.getCell(COL.E).value = invoiceDate;
       row.getCell(COL.F).value = 'test';
-      row.getCell(COL.G).value = '01.12.2026';
+      row.getCell(COL.G).value = contractDate;
       row.getCell(COL.AO).value = String(idx + 1);
       row.getCell(COL.AS).value = item.outputName;
       row.getCell(COL.AT).value = item.ikpu ? item.ikpu + ' ' : '';
@@ -880,6 +934,12 @@
     if(!yoriqnomaItems) throw new Error('Yo\'riqnoma hali yuklanmagan');
     if(!moySkladData) throw new Error('MoySklad faylini yuklang');
 
+    const invoiceDateRaw = document.getElementById('input-invoice-date').value;
+    const contractDateRaw = document.getElementById('input-contract-date').value;
+    if(!invoiceDateRaw || !contractDateRaw) throw new Error('Hisob-faktura va shartnoma sanalarini kiriting');
+    const invoiceDate = formatDateInput(invoiceDateRaw);
+    const contractDate = formatDateInput(contractDateRaw);
+
     const { products, customerInn } = moySkladData;
 
     const codeIndex = buildCodeIndex(yoriqnomaItems);
@@ -897,7 +957,7 @@
     const matchedCount = results.filter(r=>r.found).length;
     const missingNames = results.filter(r=>!r.found).map(r=>r.outputName);
 
-    const wb = await buildOutputWorkbook(results, customerInn || '');
+    const wb = await buildOutputWorkbook(results, customerInn || '', invoiceDate, contractDate);
     outputBuffer = await wb.xlsx.writeBuffer();
     outputFileName = 'Buyurtma_' + formatDateForFile() + '.xlsx';
 
