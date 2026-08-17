@@ -562,13 +562,23 @@
     <div class="result-panel" id="specResultPanel">
       <div class="result-summary">
         <div class="stat-card matched">
-          <div class="num" id="specProductCount">0</div>
-          <div class="label">Mahsulotlar soni</div>
+          <div class="num" id="specMatchedCount">0</div>
+          <div class="label">Yo'riqnomadan topilgan</div>
         </div>
-        <div class="stat-card matched">
-          <div class="num" id="specTotalSum">0</div>
-          <div class="label">Jami summa (NDS bilan)</div>
+        <div class="stat-card missing">
+          <div class="num" id="specMissingCount">0</div>
+          <div class="label">Yo'riqnomada topilmagan</div>
         </div>
+      </div>
+      <div class="customer-line">Mahsulotlar: <b id="specProductCount">0</b> ta — Jami summa (NDS bilan): <b id="specTotalSum">0</b></div>
+      <div class="missing-list">
+        <table>
+          <thead>
+            <tr><th>Yo'riqnomada topilmagan mahsulot (Artikul — Nomi)</th></tr>
+          </thead>
+          <tbody id="specMissingTableBody"></tbody>
+        </table>
+        <div class="empty-msg" id="specMissingEmptyMsg" style="display:none;">Barcha mahsulotlar yo'riqnomadan topildi 🎉</div>
       </div>
       <div class="download-row">
         <button class="success-btn" id="specDownloadBtn">⬇ Word hujjatni yuklab olish</button>
@@ -1293,7 +1303,7 @@
       const supply = Math.round((p.qty * p.price) * 100) / 100;
       const vat = Math.round(supply * 0.12 * 100) / 100;
       const total = Math.round((supply + vat) * 100) / 100;
-      return { name: p.name, unit: p.unit, qty: p.qty, price: p.price, supply, vat, total };
+      return { name: p.name, code: p.code, found: p.found, unit: 'шт', qty: p.qty, price: p.price, supply, vat, total };
     });
     const supplyTotal = Math.round(rows.reduce((s,r)=>s + r.supply, 0) * 100) / 100;
     const vatTotal = Math.round(rows.reduce((s,r)=>s + r.vat, 0) * 100) / 100;
@@ -1301,30 +1311,66 @@
     return { rows, supplyTotal, vatTotal, grandTotal };
   }
 
-  function parseSpecWorkbook(wb){
+  // Reads a MoySklad "Товарный чек" (demand check) export: a buyer requisites
+  // block in the first populated cell, then a Артикул/Наименование/Кол-во/Цена
+  // table. The product name shown in the Word doc always comes from the
+  // Yo'riqnoma (matched by Артикул code), not from this file's own name text.
+  function parseRequisitesBlock(text){
+    const lines = String(text == null ? '' : text).split(/\r\n|\r|\n/);
+    function get(label){
+      const re = new RegExp('^\\s*' + label + '\\s*:\\s*(.*)$', 'i');
+      for(const line of lines){
+        const m = line.match(re);
+        if(m) return m[1].trim();
+      }
+      return '';
+    }
+    return {
+      name: get('Наименование'),
+      address: get('Адрес'),
+      phone: get('Телефон'),
+      inn: get('ИНН'),
+      oked: get('ОКЭД'),
+      account: get('Р/С'),
+      bank: get('Банк'),
+      mfo: get('МФО')
+    };
+  }
+
+  function parseDemandCheckWorkbook(wb){
     const wsName = wb.SheetNames[0];
     const ws = wb.Sheets[wsName];
     const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
 
-    let headerRowIdx = -1, nameCol = -1, unitCol = -1, qtyCol = -1, priceCol = -1;
+    let buyerText = '';
+    outer:
+    for(const row of aoa){
+      for(const cell of row){
+        const s = String(cell == null ? '' : cell);
+        if(/наименование\s*:/i.test(s)){ buyerText = s; break outer; }
+      }
+    }
+    const buyer = parseRequisitesBlock(buyerText);
+
+    let headerRowIdx = -1, codeCol = -1, nameCol = -1, qtyCol = -1, priceCol = -1;
     for(let r=0;r<aoa.length;r++){
       const row = aoa[r];
-      let nCol=-1, uCol=-1, qCol=-1, pCol=-1;
+      let cCol=-1, nCol=-1, qCol=-1, pCol=-1;
       for(let c=0;c<row.length;c++){
         const t = normalize(row[c]);
         if(!t) continue;
-        if(nCol===-1 && /(наименование|nomi|номи)/.test(t)) nCol = c;
-        if(uCol===-1 && /(ед\.?\s*изм|birlik|бирлик)/.test(t)) uCol = c;
-        if(qCol===-1 && /(кол-?во|miqdor|миқдор)/.test(t)) qCol = c;
+        if(cCol===-1 && /артикул/.test(t)) cCol = c;
+        if(nCol===-1 && /наименование/.test(t)) nCol = c;
+        if(qCol===-1 && /кол-?во/.test(t)) qCol = c;
         if(pCol===-1 && /(цена|narx|нарх)/.test(t)) pCol = c;
       }
       if(nCol !== -1 && qCol !== -1 && pCol !== -1){
-        headerRowIdx = r; nameCol = nCol; unitCol = uCol; qtyCol = qCol; priceCol = pCol;
+        headerRowIdx = r; codeCol = cCol; nameCol = nCol; qtyCol = qCol; priceCol = pCol;
         break;
       }
     }
     if(headerRowIdx === -1){
-      throw new Error('Sarlavha qatori topilmadi (Nomi / Miqdori / Narxi ustunlari yo\'q)');
+      throw new Error('Sarlavha qatori topilmadi (Артикул / Наименование / Кол-во / Цена ustunlari yo\'q)');
     }
 
     const products = [];
@@ -1332,14 +1378,12 @@
       const row = aoa[r];
       const name = row[nameCol];
       if(name == null || String(name).trim() === '') continue;
-      const lowered = String(name).toLowerCase();
-      if(lowered.indexOf('итого') !== -1 || lowered.indexOf('jami') !== -1) break;
       const qty = row[qtyCol];
       const price = row[priceCol];
       if(qty === '' || qty == null || price === '' || price == null) continue;
       products.push({
+        code: codeCol !== -1 ? normalizeCode(row[codeCol]) : '',
         name: String(name).trim(),
-        unit: (unitCol !== -1 && String(row[unitCol] || '').trim()) || 'шт',
         qty: Number(qty) || 0,
         price: Number(price) || 0
       });
@@ -1347,7 +1391,8 @@
     if(products.length === 0){
       throw new Error('Mahsulot qatorlari topilmadi');
     }
-    return products;
+
+    return { products, buyer };
   }
 
   function updateSpecButton(){
@@ -1373,11 +1418,36 @@
 
     async function handleFile(file){
       try{
+        if(!yoriqnomaItems) throw new Error('Yo\'riqnoma hali yuklanmagan, birozdan so\'ng qayta urinib ko\'ring');
+
         const buf = await file.arrayBuffer();
         const wb = XLSX.read(new Uint8Array(buf), {type:'array'});
-        specProducts = parseSpecWorkbook(wb);
+        const { products, buyer } = parseDemandCheckWorkbook(wb);
+
+        const codeIndex = buildCodeIndex(yoriqnomaItems);
+        specProducts = products.map(p=>{
+          const match = findMatch(p.code, '', p.name, yoriqnomaItems, codeIndex);
+          return {
+            code: p.code,
+            name: match ? match.name : p.name,
+            found: !!match,
+            qty: p.qty,
+            price: p.price
+          };
+        });
+
+        document.getElementById('buyer-name').value = buyer.name || '';
+        document.getElementById('buyer-address').value = buyer.address || '';
+        document.getElementById('buyer-phone').value = buyer.phone || '';
+        document.getElementById('buyer-inn').value = buyer.inn || '';
+        document.getElementById('buyer-oked').value = buyer.oked || '';
+        document.getElementById('buyer-account').value = buyer.account || '';
+        document.getElementById('buyer-bank').value = buyer.bank || '';
+        document.getElementById('buyer-mfo').value = buyer.mfo || '';
+
+        const missing = specProducts.filter(p=>!p.found).length;
         zone.classList.add('loaded');
-        filenameEl.textContent = file.name + ' (' + specProducts.length + ' ta mahsulot)';
+        filenameEl.textContent = file.name + ' (' + specProducts.length + ' ta mahsulot' + (missing ? ', ' + missing + ' tasi yo\'riqnomada topilmadi' : '') + ')';
       }catch(err){
         specProducts = null;
         zone.classList.remove('loaded');
@@ -1542,8 +1612,30 @@
     specOutputBuffer = blob;
     specOutputFileName = 'Spetsifikatsiya_' + specNumber + '_' + formatDateForFile() + '.docx';
 
+    const matchedCount = computed.rows.filter(r=>r.found).length;
+    const missingRows = computed.rows.filter(r=>!r.found);
+
     document.getElementById('specProductCount').textContent = computed.rows.length;
     document.getElementById('specTotalSum').textContent = formatMoney(computed.grandTotal);
+    document.getElementById('specMatchedCount').textContent = matchedCount;
+    document.getElementById('specMissingCount').textContent = missingRows.length;
+
+    const tbody = document.getElementById('specMissingTableBody');
+    tbody.innerHTML = '';
+    const emptyMsg = document.getElementById('specMissingEmptyMsg');
+    if(missingRows.length === 0){
+      emptyMsg.style.display = 'block';
+    }else{
+      emptyMsg.style.display = 'none';
+      missingRows.forEach(r=>{
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.textContent = (r.code ? r.code + ' — ' : '') + r.name;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      });
+    }
+
     document.getElementById('specResultPanel').classList.add('show');
   }
 
