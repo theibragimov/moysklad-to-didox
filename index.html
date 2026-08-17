@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
 <style>
   :root{
     --primary:#E8491D;
@@ -339,6 +340,71 @@
     padding:30px 20px 40px;
   }
   input[type=file]{display:none;}
+  .tab-nav{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-top:24px;
+  }
+  .tab-btn{
+    background:#fff;
+    border:2px solid var(--border);
+    color:var(--muted);
+    font-weight:700;
+    font-size:14.5px;
+    padding:12px 26px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:all .2s ease;
+  }
+  .tab-btn:hover{border-color:var(--primary-light);}
+  .tab-btn.active{
+    background:var(--grad);
+    border-color:transparent;
+    color:#fff;
+    box-shadow:0 10px 26px -8px rgba(232,73,29,.5);
+  }
+  .section{display:none;}
+  .section.active{display:block;}
+  .field-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-bottom:28px;
+  }
+  .field-grid .field.full{grid-column:1 / -1;}
+  .field label{
+    display:block;
+    font-size:13px;
+    font-weight:700;
+    color:var(--text);
+    margin-bottom:6px;
+  }
+  .field input[type=text],
+  .field input[type=date]{
+    width:100%;
+    padding:12px 14px;
+    border:2px solid var(--border);
+    border-radius:14px;
+    font-size:15px;
+    font-family:inherit;
+    color:var(--text);
+    background:#fff;
+    transition:border-color .2s ease;
+  }
+  .field input[type=text]:focus,
+  .field input[type=date]:focus{
+    outline:none;
+    border-color:var(--primary);
+  }
+  .field-section-title{
+    font-size:13px;
+    font-weight:800;
+    color:var(--primary-dark);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    margin:6px 0 14px;
+  }
 </style>
 </head>
 <body>
@@ -351,8 +417,14 @@
 
 <div class="container">
 
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-btn-convert" type="button">MoySklad → Didox</button>
+    <button class="tab-btn" id="tab-btn-spec" type="button">Spetsifikatsiya</button>
+  </div>
+
   <div class="error-box" id="errorBox"></div>
 
+  <div class="section active" id="section-convert">
   <div class="panel">
 
     <div class="ready-line" id="readyLine"></div>
@@ -406,6 +478,104 @@
     </div>
   </div>
 
+  </div>
+
+  </div>
+
+  <div class="section" id="section-spec">
+  <div class="panel">
+
+    <div class="ready-line" id="specReadyLine"></div>
+
+    <div class="dropzone" id="zone-spec">
+      <div class="icon-badge">📦</div>
+      <div class="title">Mahsulotlar fayli</div>
+      <div class="hint">Spetsifikatsiya uchun mahsulotlar ro'yxatini shu yerga tashlang (.xls yoki .xlsx)</div>
+      <div class="filename" id="filename-spec"></div>
+      <input type="file" id="input-spec" accept=".xlsx,.xls,.csv">
+    </div>
+
+    <div class="field-section-title">Shartnoma va spetsifikatsiya</div>
+    <div class="field-grid">
+      <div class="field">
+        <label for="spec-city">Shahar</label>
+        <input type="text" id="spec-city" value="Ташкент">
+      </div>
+      <div class="field">
+        <label for="spec-number">Spetsifikatsiya raqami</label>
+        <input type="text" id="spec-number" placeholder="1">
+      </div>
+      <div class="field">
+        <label for="spec-date">Spetsifikatsiya (Ilova) sanasi</label>
+        <input type="date" id="spec-date">
+      </div>
+      <div class="field">
+        <label for="spec-contract-number">Shartnoma raqami</label>
+        <input type="text" id="spec-contract-number" placeholder="129">
+      </div>
+      <div class="field">
+        <label for="spec-contract-date">Shartnoma sanasi</label>
+        <input type="date" id="spec-contract-date">
+      </div>
+    </div>
+
+    <div class="field-section-title">Xaridor (Покупатель) rekvizitlari</div>
+    <div class="field-grid">
+      <div class="field full">
+        <label for="buyer-name">Nomi</label>
+        <input type="text" id="buyer-name" placeholder='"GRAND PHARM TRADE" MCHJ'>
+      </div>
+      <div class="field full">
+        <label for="buyer-address">Manzil</label>
+        <input type="text" id="buyer-address" placeholder="g. Toshkent, ...">
+      </div>
+      <div class="field">
+        <label for="buyer-phone">Telefon</label>
+        <input type="text" id="buyer-phone">
+      </div>
+      <div class="field">
+        <label for="buyer-inn">INN</label>
+        <input type="text" id="buyer-inn">
+      </div>
+      <div class="field">
+        <label for="buyer-oked">OKED</label>
+        <input type="text" id="buyer-oked">
+      </div>
+      <div class="field">
+        <label for="buyer-account">R/S (hisob raqami)</label>
+        <input type="text" id="buyer-account">
+      </div>
+      <div class="field full">
+        <label for="buyer-bank">Bank</label>
+        <input type="text" id="buyer-bank">
+      </div>
+      <div class="field">
+        <label for="buyer-mfo">MFO</label>
+        <input type="text" id="buyer-mfo">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary-btn" id="specConvertBtn" disabled>Spetsifikatsiya yaratish</button>
+    </div>
+
+    <div class="result-panel" id="specResultPanel">
+      <div class="result-summary">
+        <div class="stat-card matched">
+          <div class="num" id="specProductCount">0</div>
+          <div class="label">Mahsulotlar soni</div>
+        </div>
+        <div class="stat-card matched">
+          <div class="num" id="specTotalSum">0</div>
+          <div class="label">Jami summa (NDS bilan)</div>
+        </div>
+      </div>
+      <div class="download-row">
+        <button class="success-btn" id="specDownloadBtn">⬇ Word hujjatni yuklab olish</button>
+      </div>
+    </div>
+
+  </div>
   </div>
 
 </div>
@@ -1003,6 +1173,397 @@
     const a = document.createElement('a');
     a.href = url;
     a.download = outputFileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  });
+
+  // ---------- Tabs ----------
+
+  function wireTabs(){
+    const btnConvert = document.getElementById('tab-btn-convert');
+    const btnSpec = document.getElementById('tab-btn-spec');
+    const secConvert = document.getElementById('section-convert');
+    const secSpec = document.getElementById('section-spec');
+    btnConvert.addEventListener('click', ()=>{
+      btnConvert.classList.add('active'); btnSpec.classList.remove('active');
+      secConvert.classList.add('active'); secSpec.classList.remove('active');
+    });
+    btnSpec.addEventListener('click', ()=>{
+      btnSpec.classList.add('active'); btnConvert.classList.remove('active');
+      secSpec.classList.add('active'); secConvert.classList.remove('active');
+    });
+  }
+  wireTabs();
+
+  // ---------- Spetsifikatsiya (Word) ----------
+
+  const RU_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+  const SPEC_SELLER = {
+    name: '"ABABIL TEAM" MCHJ',
+    address: "ГОРОД ТАШКЕНТ АЛМАЗАРСКИЙ РАЙОН NIYOZOV KO'CHASI, 1-UY, YERTO'LASIDA",
+    phone: '+998955010707',
+    inn: SELLER_INN,
+    oked: '46460',
+    account: '20208000705333098001',
+    bank: 'ЗАНГИОТА Т., ЧЭКИ "INVEST FINANCE BANK" АТБ ЗАНГИОТА ФИЛИАЛИ',
+    mfo: '01080'
+  };
+
+  let specProducts = null;
+  let specOutputBuffer = null;
+  let specOutputFileName = 'Spetsifikatsiya.docx';
+
+  function formatMoney(n){
+    const rounded = Math.round((Number(n) || 0) * 100) / 100;
+    return rounded.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/ /g, ' ');
+  }
+
+  function formatQty(n){
+    return (Number(n) || 0).toFixed(6);
+  }
+
+  const RU_ONES = ['', 'один','два','три','четыре','пять','шесть','семь','восемь','девять'];
+  const RU_ONES_F = ['', 'одна','две','три','четыре','пять','шесть','семь','восемь','девять'];
+  const RU_TEENS = ['десять','одиннадцать','двенадцать','тринадцать','четырнадцать','пятнадцать','шестнадцать','семнадцать','восемнадцать','девятнадцать'];
+  const RU_TENS = ['', '', 'двадцать','тридцать','сорок','пятьдесят','шестьдесят','семьдесят','восемьдесят','девяносто'];
+  const RU_HUNDREDS = ['', 'сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];
+
+  function threeDigitsToWordsRu(n, feminine){
+    const words = [];
+    const h = Math.floor(n / 100);
+    const t = n % 100;
+    if(h) words.push(RU_HUNDREDS[h]);
+    if(t >= 10 && t < 20){
+      words.push(RU_TEENS[t - 10]);
+    }else{
+      const tt = Math.floor(t / 10);
+      const o = t % 10;
+      if(tt) words.push(RU_TENS[tt]);
+      if(o) words.push((feminine ? RU_ONES_F : RU_ONES)[o]);
+    }
+    return words;
+  }
+
+  function ruPluralForm(n, forms){
+    const n100 = n % 100;
+    const n10 = n % 10;
+    if(n100 >= 11 && n100 <= 14) return forms[2];
+    if(n10 === 1) return forms[0];
+    if(n10 >= 2 && n10 <= 4) return forms[1];
+    return forms[2];
+  }
+
+  function numberToWordsRu(n){
+    if(n === 0) return 'ноль';
+    const groups = [
+      { div: 1000000000, forms: ['миллиард','миллиарда','миллиардов'], feminine: false },
+      { div: 1000000, forms: ['миллион','миллиона','миллионов'], feminine: false },
+      { div: 1000, forms: ['тысяча','тысячи','тысяч'], feminine: true }
+    ];
+    let remainder = Math.floor(n);
+    const parts = [];
+    for(const g of groups){
+      const count = Math.floor(remainder / g.div);
+      remainder %= g.div;
+      if(count > 0){
+        parts.push(...threeDigitsToWordsRu(count, g.feminine));
+        parts.push(ruPluralForm(count, g.forms));
+      }
+    }
+    if(remainder > 0 || parts.length === 0){
+      parts.push(...threeDigitsToWordsRu(remainder, false));
+    }
+    return parts.filter(Boolean).join(' ');
+  }
+
+  function sumInWordsUZS(amount){
+    const rounded = Math.round((Number(amount) || 0) * 100) / 100;
+    const som = Math.floor(rounded);
+    const tiyin = Math.round((rounded - som) * 100);
+    const somWords = numberToWordsRu(som);
+    const capitalized = somWords.charAt(0).toUpperCase() + somWords.slice(1);
+    return capitalized + ' сум ' + String(tiyin).padStart(2, '0') + ' тийин';
+  }
+
+  function computeSpecRows(products){
+    const rows = products.map(p=>{
+      const supply = Math.round((p.qty * p.price) * 100) / 100;
+      const vat = Math.round(supply * 0.12 * 100) / 100;
+      const total = Math.round((supply + vat) * 100) / 100;
+      return { name: p.name, unit: p.unit, qty: p.qty, price: p.price, supply, vat, total };
+    });
+    const supplyTotal = Math.round(rows.reduce((s,r)=>s + r.supply, 0) * 100) / 100;
+    const vatTotal = Math.round(rows.reduce((s,r)=>s + r.vat, 0) * 100) / 100;
+    const grandTotal = Math.round(rows.reduce((s,r)=>s + r.total, 0) * 100) / 100;
+    return { rows, supplyTotal, vatTotal, grandTotal };
+  }
+
+  function parseSpecWorkbook(wb){
+    const wsName = wb.SheetNames[0];
+    const ws = wb.Sheets[wsName];
+    const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+    let headerRowIdx = -1, nameCol = -1, unitCol = -1, qtyCol = -1, priceCol = -1;
+    for(let r=0;r<aoa.length;r++){
+      const row = aoa[r];
+      let nCol=-1, uCol=-1, qCol=-1, pCol=-1;
+      for(let c=0;c<row.length;c++){
+        const t = normalize(row[c]);
+        if(!t) continue;
+        if(nCol===-1 && /(наименование|nomi|номи)/.test(t)) nCol = c;
+        if(uCol===-1 && /(ед\.?\s*изм|birlik|бирлик)/.test(t)) uCol = c;
+        if(qCol===-1 && /(кол-?во|miqdor|миқдор)/.test(t)) qCol = c;
+        if(pCol===-1 && /(цена|narx|нарх)/.test(t)) pCol = c;
+      }
+      if(nCol !== -1 && qCol !== -1 && pCol !== -1){
+        headerRowIdx = r; nameCol = nCol; unitCol = uCol; qtyCol = qCol; priceCol = pCol;
+        break;
+      }
+    }
+    if(headerRowIdx === -1){
+      throw new Error('Sarlavha qatori topilmadi (Nomi / Miqdori / Narxi ustunlari yo\'q)');
+    }
+
+    const products = [];
+    for(let r=headerRowIdx+1; r<aoa.length; r++){
+      const row = aoa[r];
+      const name = row[nameCol];
+      if(name == null || String(name).trim() === '') continue;
+      const lowered = String(name).toLowerCase();
+      if(lowered.indexOf('итого') !== -1 || lowered.indexOf('jami') !== -1) break;
+      const qty = row[qtyCol];
+      const price = row[priceCol];
+      if(qty === '' || qty == null || price === '' || price == null) continue;
+      products.push({
+        name: String(name).trim(),
+        unit: (unitCol !== -1 && String(row[unitCol] || '').trim()) || 'шт',
+        qty: Number(qty) || 0,
+        price: Number(price) || 0
+      });
+    }
+    if(products.length === 0){
+      throw new Error('Mahsulot qatorlari topilmadi');
+    }
+    return products;
+  }
+
+  function updateSpecButton(){
+    document.getElementById('specConvertBtn').disabled = !specProducts;
+  }
+
+  function wireSpecZone(){
+    const zone = document.getElementById('zone-spec');
+    const input = document.getElementById('input-spec');
+    const filenameEl = document.getElementById('filename-spec');
+
+    zone.addEventListener('click', ()=> input.click());
+    zone.addEventListener('dragover', (e)=>{ e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', ()=> zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if(e.dataTransfer.files && e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    input.addEventListener('change', (e)=>{
+      if(e.target.files && e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    async function handleFile(file){
+      try{
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(new Uint8Array(buf), {type:'array'});
+        specProducts = parseSpecWorkbook(wb);
+        zone.classList.add('loaded');
+        filenameEl.textContent = file.name + ' (' + specProducts.length + ' ta mahsulot)';
+      }catch(err){
+        specProducts = null;
+        zone.classList.remove('loaded');
+        filenameEl.textContent = '';
+        showError('"' + file.name + '" faylini o\'qishda xatolik: ' + err.message);
+      }
+      updateSpecButton();
+    }
+  }
+  wireSpecZone();
+
+  async function buildSpecDocx(computed, meta){
+    const { Document, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } = docx;
+
+    const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+    const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+
+    function cell(text, opts={}){
+      return new TableCell({
+        width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
+        columnSpan: opts.colSpan,
+        children: [new Paragraph({
+          alignment: opts.align || AlignmentType.CENTER,
+          children: [new TextRun({ text: String(text), bold: !!opts.bold, size: 18 })]
+        })]
+      });
+    }
+
+    const headerRow = new TableRow({
+      tableHeader: true,
+      children: [
+        cell('№', {bold:true, width:4}),
+        cell('Наименование товара (работ, услуг)', {bold:true, width:24}),
+        cell('Ед. изм.', {bold:true, width:6}),
+        cell('Кол-во', {bold:true, width:8}),
+        cell('Цена за единицу', {bold:true, width:12}),
+        cell('Стоимость поставки без НДС', {bold:true, width:14}),
+        cell('НДС %', {bold:true, width:6}),
+        cell('Сумма НДС', {bold:true, width:12}),
+        cell('Стоимость поставки с НДС', {bold:true, width:14})
+      ]
+    });
+
+    const dataRows = computed.rows.map((r, idx)=> new TableRow({
+      children: [
+        cell(idx + 1),
+        cell(r.name, {align: AlignmentType.LEFT}),
+        cell(r.unit),
+        cell(formatQty(r.qty)),
+        cell(formatMoney(r.price)),
+        cell(formatMoney(r.supply)),
+        cell('12%'),
+        cell(formatMoney(r.vat)),
+        cell(formatMoney(r.total))
+      ]
+    }));
+
+    const totalRow = new TableRow({
+      children: [
+        cell('Итого:', {bold:true, colSpan:5, align: AlignmentType.RIGHT}),
+        cell(formatMoney(computed.supplyTotal), {bold:true}),
+        cell(''),
+        cell(formatMoney(computed.vatTotal), {bold:true}),
+        cell(formatMoney(computed.grandTotal), {bold:true})
+      ]
+    });
+
+    const table = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [headerRow, ...dataRows, totalRow]
+    });
+
+    function reqLines(r){
+      return [
+        new Paragraph({ children:[ new TextRun({ text: 'Наименование: ' + (r.name || ''), size: 18 }) ] }),
+        new Paragraph({ children:[ new TextRun({ text: 'Адрес: ' + (r.address || ''), size: 18 }) ] }),
+        new Paragraph({ children:[ new TextRun({ text: 'Телефон: ' + (r.phone || ''), size: 18 }) ] }),
+        new Paragraph({ children:[ new TextRun({ text: 'ИНН: ' + (r.inn || ''), size: 18 }) ] }),
+        new Paragraph({ children:[ new TextRun({ text: 'ОКЭД: ' + (r.oked || ''), size: 18 }) ] }),
+        new Paragraph({ children:[ new TextRun({ text: 'Р/С: ' + (r.account || ''), size: 18 }) ] }),
+        new Paragraph({ children:[ new TextRun({ text: 'Банк: ' + (r.bank || ''), size: 18 }) ] }),
+        new Paragraph({ children:[ new TextRun({ text: 'МФО: ' + (r.mfo || ''), size: 18 }) ] })
+      ];
+    }
+
+    const reqTable = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({ children:[
+          new TableCell({ borders: noBorders, width:{size:50,type:WidthType.PERCENTAGE}, children:[ new Paragraph({ children:[ new TextRun({ text:'«Поставщик»', bold:true, size:20 }) ] }) ] }),
+          new TableCell({ borders: noBorders, width:{size:50,type:WidthType.PERCENTAGE}, children:[ new Paragraph({ children:[ new TextRun({ text:'«Покупатель»', bold:true, size:20 }) ] }) ] })
+        ]}),
+        new TableRow({ children:[
+          new TableCell({ borders: noBorders, children: reqLines(meta.seller) }),
+          new TableCell({ borders: noBorders, children: reqLines(meta.buyer) })
+        ]})
+      ]
+    });
+
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({ children:[
+            new TextRun({ text: 'г. ' + meta.city, size: 20 }),
+            new TextRun({ text: '\t\t\t\t\t«' + meta.specDay + '» ' + meta.specMonthName + ' ' + meta.specYear + ' г.', size: 20 })
+          ]}),
+          new Paragraph({ alignment: AlignmentType.CENTER, children:[ new TextRun({ text: 'СПЕЦИФИКАЦИЯ №' + meta.specNumber, bold:true, size:24 }) ] }),
+          new Paragraph({ alignment: AlignmentType.RIGHT, children:[ new TextRun({ text: 'Приложение №' + meta.specNumber, size:20 }) ] }),
+          new Paragraph({ children:[ new TextRun({ text: 'К договору № ' + meta.contractNumber + ' от «' + meta.contractDay + '» ' + meta.contractMonthName + ' ' + meta.contractYear + ' г.', size:20 }) ] }),
+          new Paragraph({ text: '' }),
+          table,
+          new Paragraph({ text: '' }),
+          new Paragraph({ children:[ new TextRun({
+            text: 'Итого, в соответствии с условиями Договора по настоящей Спецификации общая сумма составляет: ' + sumInWordsUZS(computed.grandTotal) + '. в т.ч. НДС: ' + formatMoney(computed.vatTotal),
+            size: 20
+          }) ]}),
+          new Paragraph({ text: '' }),
+          reqTable
+        ]
+      }]
+    });
+
+    return await docx.Packer.toBlob(doc);
+  }
+
+  async function convertSpec(){
+    if(!specProducts) throw new Error('Mahsulotlar faylini yuklang');
+
+    const specDateRaw = document.getElementById('spec-date').value;
+    const contractDateRaw = document.getElementById('spec-contract-date').value;
+    if(!specDateRaw || !contractDateRaw) throw new Error('Spetsifikatsiya va shartnoma sanalarini kiriting');
+
+    const specNumber = document.getElementById('spec-number').value.trim() || '1';
+    const contractNumber = document.getElementById('spec-contract-number').value.trim();
+    const city = document.getElementById('spec-city').value.trim() || 'Ташкент';
+
+    const buyer = {
+      name: document.getElementById('buyer-name').value.trim(),
+      address: document.getElementById('buyer-address').value.trim(),
+      phone: document.getElementById('buyer-phone').value.trim(),
+      inn: document.getElementById('buyer-inn').value.trim(),
+      oked: document.getElementById('buyer-oked').value.trim(),
+      account: document.getElementById('buyer-account').value.trim(),
+      bank: document.getElementById('buyer-bank').value.trim(),
+      mfo: document.getElementById('buyer-mfo').value.trim()
+    };
+
+    const [sY, sM, sD] = specDateRaw.split('-').map(Number);
+    const [cY, cM, cD] = contractDateRaw.split('-').map(Number);
+
+    const meta = {
+      city, specNumber, contractNumber,
+      specDay: sD, specMonthName: RU_MONTHS[sM - 1], specYear: sY,
+      contractDay: cD, contractMonthName: RU_MONTHS[cM - 1], contractYear: cY,
+      seller: SPEC_SELLER,
+      buyer
+    };
+
+    const computed = computeSpecRows(specProducts);
+    const blob = await buildSpecDocx(computed, meta);
+    specOutputBuffer = blob;
+    specOutputFileName = 'Spetsifikatsiya_' + specNumber + '_' + formatDateForFile() + '.docx';
+
+    document.getElementById('specProductCount').textContent = computed.rows.length;
+    document.getElementById('specTotalSum').textContent = formatMoney(computed.grandTotal);
+    document.getElementById('specResultPanel').classList.add('show');
+  }
+
+  document.getElementById('specConvertBtn').addEventListener('click', async ()=>{
+    try{
+      await convertSpec();
+    }catch(err){
+      showError('Spetsifikatsiya yaratishda xatolik: ' + err.message);
+    }
+  });
+
+  document.getElementById('specDownloadBtn').addEventListener('click', ()=>{
+    if(!specOutputBuffer){
+      showError('Avval spetsifikatsiya yarating');
+      return;
+    }
+    const url = URL.createObjectURL(specOutputBuffer);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = specOutputFileName;
     document.body.appendChild(a);
     a.click();
     a.remove();
