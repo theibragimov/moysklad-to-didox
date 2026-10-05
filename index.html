@@ -727,7 +727,7 @@
       if(!/^\d+$/.test(String(num == null ? '' : num).trim())) continue;
       items.push({
         ikpu: ikpu != null ? String(ikpu).trim() : '',
-        code: normalizeCode(code),
+        code: String(code == null ? '' : code),
         name: String(name).trim()
       });
     }
@@ -746,9 +746,12 @@
       if(!item.code) continue;
       // A single Yo'riqnoma row can cover several article codes at once
       // (e.g. "00828, 00829, 00830") — index each one.
-      const codes = item.code.split(',').map(normalizeCode).filter(Boolean);
+      // Split on commas, semicolons, slashes AND whitespace/newlines so a
+      // list wrapped in the cell (or missing a comma) never fuses two codes.
+      const codes = item.code.split(/[,;\/|\s\u00a0،]+/).map(normalizeCode).filter(Boolean);
       for(const c of codes){
-        if(!map.has(c)) map.set(c, item);
+        const key = c.toUpperCase();
+        if(!map.has(key)) map.set(key, item);
       }
     }
     return map;
@@ -969,8 +972,13 @@
   }
 
   function findMatch(code, model, name, items, codeIndex){
-    const codeNorm = normalizeCode(code);
-    if(codeNorm && codeIndex && codeIndex.has(codeNorm)) return codeIndex.get(codeNorm);
+    const codeNorm = normalizeCode(code).toUpperCase();
+    if(codeNorm && codeIndex){
+      if(codeIndex.has(codeNorm)) return codeIndex.get(codeNorm);
+      // numeric cells can arrive as "89921.0"
+      const trimmed = codeNorm.replace(/\.0+$/,'');
+      if(trimmed !== codeNorm && codeIndex.has(trimmed)) return codeIndex.get(trimmed);
+    }
 
     const modelNorm = String(model || '').trim().toUpperCase();
     if(modelNorm){
