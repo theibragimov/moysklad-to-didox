@@ -724,7 +724,11 @@
       const code = row[2]; // column C ("Code")
       const name = row[3];
       if(name == null || String(name).trim() === '') continue;
-      if(!/^\d+$/.test(String(num == null ? '' : num).trim())) continue;
+      // Row number (col B) is sometimes left blank on real product rows, so
+      // accept a row when it has a numeric row number OR a numeric ИКПУ.
+      const hasNum = /^\d+$/.test(String(num == null ? '' : num).trim());
+      const hasIkpu = /^\d{10,}$/.test(String(ikpu == null ? '' : ikpu).trim());
+      if(!hasNum && !hasIkpu) continue;
       items.push({
         ikpu: ikpu != null ? String(ikpu).trim() : '',
         code: String(code == null ? '' : code),
